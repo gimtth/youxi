@@ -527,18 +527,12 @@ class GameAutoPlayer:
                 if manual_mode:
                     while True:
                         print(f"\n[步骤 {step_idx}/{total_moves}] 移动: {start} -> {end}, 方向: {dir_key}")
-                        print("按 空格/回车 执行 | r 重试当前步 | q 退出")
+                        print("按 空格/回车 执行 | q 退出")
                         
                         event = keyboard.read_event()
                         if event.event_type == keyboard.KEY_DOWN:
                             if event.name == 'space' or event.name == 'enter':
                                 break  # 执行当前步骤
-                            elif event.name == 'r':
-                                # 重试：跳回上一步，不执行当前步骤
-                                print("↩️ 重试：回到上一步...")
-                                if step_idx > 0:
-                                    step_idx -= 1
-                                continue  # 直接进入下一次循环
                             elif event.name == 'q':
                                 print("⚠️ 用户取消执行")
                                 return False
@@ -596,29 +590,39 @@ class GameAutoPlayer:
             print(f"  原地点击: ({start_x}, {start_y})")
             pyautogui.click(start_x, start_y)
         else:
-            # 拖动操作 - 往终点方向多偏移一点
-            distance = abs(start_row - end_row) + abs(start_col - end_col)
+            # 获取目标位置的实际砖块中心
+            end_cell = self.grid.get_cell(end_row, end_col)
             
-            # 计算偏移方向，多移动0.4格
-            if end_row != start_row:
-                offset_row = 0.4 if end_row > start_row else -0.4
+            if end_cell and not end_cell['is_empty']:
+                # 目标位置有砖块，使用实际识别的中心
+                end_x = end_cell['abs_center_x']
+                end_y = end_cell['abs_center_y']
             else:
-                offset_row = 0
+                # 目标位置为空，使用理论网格位置
+                end_x = self.grid.region_offset[0] + (end_col + 0.5) * self.grid.cell_width
+                end_y = self.grid.region_offset[1] + (end_row + 0.5) * self.grid.cell_height
             
-            if end_col != start_col:
-                offset_col = 0.4 if end_col > start_col else -0.4
+            # 计算移动方向，稍微偏移以确保到达
+            dx = end_x - start_x
+            dy = end_y - start_y
+            distance = abs(end_row - start_row) + abs(end_col - start_col)
+            
+            # 根据移动方向添加小偏移（约0.2格）
+            if abs(dx) > abs(dy):
+                # 水平移动为主
+                offset = 0.2 * self.grid.cell_width * (1 if dx > 0 else -1)
+                end_x += offset
             else:
-                offset_col = 0
-            
-            end_x = self.grid.region_offset[0] + (end_col + 0.5 + offset_col) * self.grid.cell_width
-            end_y = self.grid.region_offset[1] + (end_row + 0.5 + offset_row) * self.grid.cell_height
+                # 垂直移动为主
+                offset = 0.2 * self.grid.cell_height * (1 if dy > 0 else -1)
+                end_y += offset
             
             print(f"  拖动: ({start_x}, {start_y}) -> ({int(end_x)}, {int(end_y)})")
             
             # 执行拖动，距离越远时间越长
-            duration = 0.2 + distance * 0.15  # 增加拖动时间
+            duration = 0.2 + distance * 0.15
             self._drag_to(start_x, start_y, end_x, end_y, duration)
-            time.sleep(0.3)  # 拖动后等待游戏响应
+            time.sleep(0.3)
     
     def get_region_by_mouse(self):
         """通过鼠标获取游戏区域坐标"""

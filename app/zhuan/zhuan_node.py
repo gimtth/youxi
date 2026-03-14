@@ -43,9 +43,17 @@ class ZhuanNode(Node):
         """
         计算并返回当前节点的优先级。
         
+        综合考虑：
+        1. 已消除数量（主要因素，权重高）
+        2. 可用移动数量（次要因素，表示当前状态的可解性）
+        
         :return: 返回节点的优先级值，数值越小优先级越高
         """
-        return -self.state.elimated_tiles()
+        eliminated = self.state.elimated_tiles()
+        available = len(self.state.available_moves())
+        # 使用元组：先按已消除数量排序，再按可用移动数量排序
+        # 权重：已消除数量更重要
+        return (-eliminated * 100, -available)
 
     def __eq__(self, other):
         return self.state == other.state
