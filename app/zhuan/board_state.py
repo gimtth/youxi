@@ -44,8 +44,10 @@ class BoardState:
                 # ptn = self.tiles[row_idx][col_start]
 
                 # search pattern in _projected_tiles at (row_idx, col_end)
-                if dir_key := self.check_single_move((row_idx, col_start), (row_idx, col_end), True):
-                    moves.append(((row_idx, col_start), (row_idx, col_end), dir_key))
+                result = self.check_single_move((row_idx, col_start), (row_idx, col_end), True)
+                if result:
+                    dir_key, eliminate_pos = result
+                    moves.append(((row_idx, col_start), (row_idx, col_end), dir_key, eliminate_pos))
 
         reflected_tiles = tuple(zip(*self.tiles))
         for col_idx in range(self.cols):
@@ -56,8 +58,10 @@ class BoardState:
                 # ptn = reflected_tiles[col_idx][row_start]
 
                 # search pattern in _projected_tiles at (row_end, col_idx)
-                if dir_key := self.check_single_move((row_start, col_idx), (row_end, col_idx), False):
-                    moves.append(((row_start, col_idx), (row_end, col_idx), dir_key))
+                result = self.check_single_move((row_start, col_idx), (row_end, col_idx), False)
+                if result:
+                    dir_key, eliminate_pos = result
+                    moves.append(((row_start, col_idx), (row_end, col_idx), dir_key, eliminate_pos))
     
         self._scan_moves = scan_moves
         return moves
@@ -160,7 +164,7 @@ class BoardState:
         :param start: 移动的起始位置
         :param end: 移动的目标位置
         :param horizontal: 是否为水平移动
-        :return: 如果移动能消除棋子，返回方向字符串；否则返回 False。
+        :return: 如果移动能消除棋子，返回 (方向字符串, 被消除者位置)；否则返回 False。
         """
         row_start, col_start = start
         row_end, col_end = end
@@ -174,10 +178,36 @@ class BoardState:
         for key in keys:
             pt = self._projected_tiles[key]
             if ptn == pt[row_end][col_end]:
-                a = 1
-                return key
+                # 计算被消除者位置
+                eliminate_pos = self._find_eliminate_pos(end, key)
+                return (key, eliminate_pos)
         return False
-
+    
+    def _find_eliminate_pos(self, end: tuple, search_dir_key: str):
+        """根据目标位置和搜索方向，找到被消除者的位置"""
+        row_end, col_end = end
+        
+        # 计算搜索方向向量
+        if search_dir_key == 'right':
+            search_dir = [0, 1]
+        elif search_dir_key == 'left':
+            search_dir = [0, -1]
+        elif search_dir_key == 'up':
+            search_dir = [-1, 0]
+        elif search_dir_key == 'down':
+            search_dir = [1, 0]
+        else:
+            return None
+        
+        # 沿着搜索方向找第一个非空位置
+        search_row, search_col = row_end + search_dir[0], col_end + search_dir[1]
+        while 0 <= search_row < self.rows and 0 <= search_col < self.cols:
+            if self.tiles[search_row][search_col] != 0:
+                return (search_row, search_col)
+            search_row += search_dir[0]
+            search_col += search_dir[1]
+        
+        return None
 
     def _compute_projected_board(self):
         """

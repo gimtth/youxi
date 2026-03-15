@@ -27,14 +27,14 @@ class ZhuanNode(Node):
         neighbors_with_actions = []
         state_set = set()
         all_moves = self.state.available_moves()
-        for start, end, search_dir_key in all_moves:
+        for start, end, search_dir_key, eliminate_pos in all_moves:
             new_state = self.state.apply_move_copy(start, end, search_dir_key)
             # new state 判重
             new_board_state = BoardState(new_state)
             if new_board_state not in state_set:
                 state_set.add(new_board_state)
                 neighbors_with_actions.append(
-                    (ZhuanNode(new_board_state, (start, end, search_dir_key)), (start, end, search_dir_key))
+                    (ZhuanNode(new_board_state, (start, end, search_dir_key, eliminate_pos)), (start, end, search_dir_key, eliminate_pos))
                 )
 
         return neighbors_with_actions

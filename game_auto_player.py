@@ -325,7 +325,7 @@ class GameAutoPlayer:
             elif current_step < len(self.solution_path):
                 node = self.solution_path[current_step]
                 if node.from_action:
-                    start, end, dir_key = node.from_action
+                    start, end, dir_key, eliminate_pos = node.from_action
                     title = f"步骤 {current_step}/{total_steps}"
                 else:
                     title = f"步骤 {current_step}/{total_steps}"
@@ -418,7 +418,7 @@ class GameAutoPlayer:
         if step > 0 and step < len(self.solution_path):
             node = self.solution_path[step]
             if node.from_action:
-                start, end, dir_key = node.from_action
+                start, end, dir_key, eliminate_pos = node.from_action
                 start_row, start_col = start
                 end_row, end_col = end
                 
@@ -426,6 +426,13 @@ class GameAutoPlayer:
                 x = start_col * cell_size + padding
                 y = start_row * cell_size + padding
                 cv2.rectangle(img, (x, y), (x+cell_size, y+cell_size), (0, 0, 255), 3)
+                
+                # 高亮被消除者位置（黄色边框）
+                if eliminate_pos:
+                    elim_row, elim_col = eliminate_pos
+                    x_e = elim_col * cell_size + padding
+                    y_e = elim_row * cell_size + padding
+                    cv2.rectangle(img, (x_e, y_e), (x_e+cell_size, y_e+cell_size), (0, 255, 255), 3)
                 
                 # 如果是移动操作，高亮终点
                 if start != end:
@@ -521,12 +528,29 @@ class GameAutoPlayer:
             node = self.solution_path[step_idx]
             
             if node.from_action:
-                start, end, dir_key = node.from_action
+                start, end, search_dir, eliminate_pos = node.from_action
+                
+                # 根据坐标变化计算真正的移动方向
+                start_row, start_col = start
+                end_row, end_col = end
+                if start == end:
+                    move_dir = 'click'
+                elif end_row > start_row:
+                    move_dir = 'down'
+                elif end_row < start_row:
+                    move_dir = 'up'
+                elif end_col > start_col:
+                    move_dir = 'right'
+                else:
+                    move_dir = 'left'
                 
                 # 手动模式：等待用户按键
                 if manual_mode:
                     while True:
-                        print(f"\n[步骤 {step_idx}/{total_moves}] 移动: {start} -> {end}, 方向: {dir_key}")
+                        if eliminate_pos:
+                            print(f"\n[步骤 {step_idx}/{total_moves}] 移动: {start} -> {end} + {eliminate_pos}, 方向: {move_dir}")
+                        else:
+                            print(f"\n[步骤 {step_idx}/{total_moves}] 移动: {start} -> {end}, 方向: {move_dir}")
                         print("按 空格/回车 执行 | q 退出")
                         
                         event = keyboard.read_event()
@@ -557,8 +581,11 @@ class GameAutoPlayer:
                             time.sleep(0.1)
                 
                 # 执行移动
-                print(f"执行: {start} -> {end}")
-                self._execute_gbfs_move(start, end, dir_key)
+                if eliminate_pos:
+                    print(f"执行: {start} -> {end} + {eliminate_pos}")
+                else:
+                    print(f"执行: {start} -> {end}")
+                self._execute_gbfs_move(start, end, search_dir)
                 self.move_count += 1
                 
                 if not manual_mode:
