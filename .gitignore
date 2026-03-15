@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Debug outputs
+debug_*.png
+verify_region.png
+move/
+
+# Local config
+game_region_config.json
